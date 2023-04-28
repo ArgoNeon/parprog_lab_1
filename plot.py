@@ -5,8 +5,8 @@ import numpy as np
 fig = plt.figure(figsize = (64,40))
 ax = plt.axes(projection='3d')
 
-x = np.arange(0, 60.1, 0.1)
-t = np.arange(0, 50.1, 0.1)
+x = np.arange(0, 60.01, 0.01)
+t = np.arange(0, 50.01, 0.01)
 
 T, X = np.meshgrid(t, x)
 

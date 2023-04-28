@@ -152,6 +152,12 @@ int main( int argc, char **argv ){
         printf ("rank: %d time: %f seconds\n", rank, end - start);
 	*/
 
+	for (i = 0; i < n_m; i++) {
+		free(tmatrix[i]);
+	}
+
+	free(tmatrix);
+
 	for (i = 0; i < n_k; i++) {
 		free(matrix[i]);
 	}
