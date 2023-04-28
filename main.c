@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include "func.c"
 #include "mpi.h"
 
@@ -13,10 +12,21 @@ extern double x_max;
 extern double t_step;
 extern double x_step;
 
+void write_to_csv(double** matrix, int n_i, int n_j) {
+	int i, j;
+ 	FILE *out = fopen("output.csv", "w+");
+	
+	for (i = 0; i < n_i; i++) {
+		for (j = 0; j < n_j; j++) {
+                	fprintf (out, "%10.2f", matrix[i][j]);
+        	if (j != n_j - 1)
+                	fprintf (out, ",");
+        }
 
-void init_matrix(double **matrix) {
+                fprintf (out, "\n");
+        }
 
-
+    	fclose(out);   
 }
 
 void fill_matrix(double **matrix, int rank, int size) {
@@ -42,11 +52,6 @@ void fill_matrix(double **matrix, int rank, int size) {
 			matrix[i][0] = ksi(i * t_step);
 		}
 	}
-/*
-	for (j = min_col; j < max_col; j++) {
-		matrix[0][j] = fi(j * x_step);
-	}
-*/
 
 	for (i = 0; i < n_k; i++) {
 		for (j = min_col; j <= max_col; j++) {			
@@ -63,6 +68,8 @@ void fill_matrix(double **matrix, int rank, int size) {
 					(matrix[i + 1][j - 1] * (1 - frac) / (1 + frac)) + 
 					(matrix[i][j - 1]) + (matrix[i][j] * (1 - frac) / (1 + frac));
 			}
+
+
 		}
 
 		if (rank != (size - 1)) {
@@ -77,26 +84,73 @@ int main( int argc, char **argv ){
 	int n_k = (int) (t_max / t_step) + 1;
         int n_m = (int) (x_max / x_step) + 1;
 
+	MPI_Status status;
 	MPI_Init(&argc, &argv);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &size);
 
 	double** matrix = (double **)calloc(n_k, sizeof(double *));
+	double** tmatrix = (double **)calloc(n_m, sizeof(double *));
 
 	for (i = 0; i < n_k; i++) {
 		matrix[i] = (double *)calloc(n_m, sizeof(double));
 	}
 
+	for (i = 0; i < n_m; i++) {
+                tmatrix[i] = (double *)calloc(n_k, sizeof(double));
+        }
+
+
 	printf("n_k: %d n_m: %d\n", n_k, n_m);
 
+	double start = MPI_Wtime();
+
 	fill_matrix(matrix, rank, size);
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	double end = MPI_Wtime();
+	
+	printf ("rank: %d time: %f seconds\n", rank, end - start);
+
+	int min_col = (n_m / size) * rank;
+        int max_col = (n_m / size) * (rank + 1) - 1;
+
+	if (rank == size - 1)
+                max_col = n_m - 1;
 
 	for (i = 0; i < n_k; i++) {
-		for(j = 0; j < n_m; j++) {
-			printf("%10.2f", matrix[i][j]);
-		}
-		printf("\n");
+		for (j = min_col; j <= max_col; j++) {
+			tmatrix[j][i] = matrix[i][j];
+		}	
 	}
+
+	if (rank != 0) {
+		for (i = min_col; i <= max_col; i++) {
+			MPI_Send (tmatrix[i], n_k, MPI_DOUBLE, 0, 5, MPI_COMM_WORLD);
+		}
+	}
+
+	if (rank == 0) {
+		for (int k = 1; k < size; k++) {
+			int min_col_k = (n_m / size) * k;
+        		int max_col_k = (n_m / size) * (k + 1) - 1;
+
+			if (k == size - 1)
+                		max_col_k = n_m - 1;
+
+			for (i = min_col_k; i <= max_col_k; i++) {
+                        	MPI_Recv (tmatrix[i], n_k, MPI_DOUBLE, k, 5, MPI_COMM_WORLD, &status);
+               		}
+		}
+	}
+
+	if (rank == 0)
+		write_to_csv(tmatrix, n_m, n_k);
+
+	/*double end = MPI_Wtime();
+
+        printf ("rank: %d time: %f seconds\n", rank, end - start);
+	*/
 
 	for (i = 0; i < n_k; i++) {
 		free(matrix[i]);

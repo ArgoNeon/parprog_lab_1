@@ -1,7 +1,7 @@
 double t_max = 50;
 double x_max = 60;
-double t_step = 5.00;
-double x_step = 5.00;
+double t_step = 0.01;
+double x_step = 0.01;
 
 double func(double t, double x){
     return x * t;
