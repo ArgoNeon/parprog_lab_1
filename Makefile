@@ -1,4 +1,4 @@
-CC = gcc
+CC = mpicc
 CCFLAGS = -Wall
 
 SRC = main.c
@@ -11,7 +11,7 @@ TARGET = build/task
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
-	$(CC) $(CCFLAGS) $^ -o $@
+	$(CC) $(CCFLAGS) $^ -o $@ -lm
 
 %.o: %.c
 	$(CC) $(CCFLAGS) $^ -o $@
